@@ -62,33 +62,31 @@
     <!-- Vote Mode -->
     <div id="tab-vote" class="tab-content">
 
-      <!-- Lobby (pre-session) -->
-      <div id="vote-lobby">
-        <p class="vote-hint">Filters above apply when creating a session.</p>
-        <button class="btn-primary" id="create-session-btn">🆕 Create Session</button>
-        <div class="divider">or join an existing one</div>
-        <div class="join-row">
-          <input type="text" id="join-code-input" placeholder="ROOM CODE" maxlength="6" autocomplete="off" spellcheck="false">
-          <button class="btn-secondary" id="join-session-btn">Join</button>
-        </div>
+      <!-- Lobby: no active session -->
+      <div id="vote-lobby" class="hidden">
+        <p class="vote-hint">Filters above apply to the session options.<br>Everyone will auto-join once a session starts.</p>
+        <button class="btn-primary" id="create-session-btn">🆕 Start Vote Session</button>
       </div>
 
-      <!-- Active session -->
+      <!-- Active session: voting in progress -->
       <div id="vote-session" class="hidden">
         <div class="session-bar">
-          <div class="room-code-display">
-            Room: <strong id="room-code-label"></strong>
-            <button class="btn-copy" id="copy-link-btn">📋 Copy link</button>
-          </div>
-          <button class="btn-danger hidden" id="end-session-btn">🏁 End &amp; reveal</button>
+          <span class="session-live">🟢 Live session</span>
+          <button class="btn-danger" id="end-session-btn">🏁 End &amp; Reveal</button>
         </div>
-
         <div id="vote-list"></div>
+      </div>
 
-        <div id="vote-results" class="hidden">
-          <h3 class="results-title">🏆 Results</h3>
-          <div id="results-list"></div>
-        </div>
+      <!-- Results -->
+      <div id="vote-results" class="hidden">
+        <h3 class="results-title">🏆 Results</h3>
+        <div id="results-list"></div>
+        <button class="btn-secondary" id="reset-session-btn">🔄 Start New Session</button>
+      </div>
+
+      <!-- Checking Firebase -->
+      <div id="vote-checking">
+        <p class="vote-hint">Connecting…</p>
       </div>
 
     </div>

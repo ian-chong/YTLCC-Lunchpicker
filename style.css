@@ -248,6 +248,16 @@ header h1 {
   gap: 8px;
   margin-bottom: 16px;
 }
+.session-live {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--success);
+}
+#reset-session-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+}
 .room-code-display {
   display: flex;
   align-items: center;

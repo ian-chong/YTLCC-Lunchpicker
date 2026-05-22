@@ -22,10 +22,9 @@ const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?for
 // ── State ─────────────────────────────────────────────────────────────────────
 let allItems      = [];
 let filteredItems = [];
-let currentSession = null;
-let isHost         = false;
-let hasVoted       = false;
-let unsubscribe    = null;   // Firebase onValue unsubscriber
+let hasVoted      = false;
+let lastSessionTs = null;    // tracks createdAt to detect new sessions
+let unsubscribe   = null;    // Firebase onValue unsubscriber
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
 
@@ -203,88 +202,67 @@ function spin() {
   tick();
 }
 
-// ── Vote mode — session management ───────────────────────────────────────────
-function generateCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+// ── Vote mode ─────────────────────────────────────────────────────────────────
+const SESSION_REF = ref(db, "sessions/current");
+
+function showVotePanel(id) {
+  ["vote-lobby", "vote-session", "vote-results", "vote-checking"]
+    .forEach(p => document.getElementById(p).classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 
-async function createSession() {
-  if (filteredItems.length === 0) {
-    alert("No options match your current filters — adjust filters before creating a session.");
-    return;
-  }
-
-  const code = generateCode();
-  isHost   = true;
-  hasVoted = false;
-  currentSession = code;
-
-  const options = filteredItems.map(i => ({
-    name:     i["Name of Place"],
-    location: i.Location    || "",
-    price:    i.Pricing     || "",
-    remarks:  i.Remarks     || ""
-  }));
-
-  const votes = {};
-  options.forEach(o => { votes[toKey(o.name)] = 0; });
-
-  await set(ref(db, `sessions/${code}`), {
-    options,
-    votes,
-    ended: false,
-    createdAt: Date.now()
-  });
-
-  enterSession(code);
-}
-
-async function joinSession() {
-  const code = document.getElementById("join-code-input").value.trim().toUpperCase();
-  if (!code) return;
-
-  const snap = await get(ref(db, `sessions/${code}`));
-  if (!snap.exists()) {
-    alert("Room not found — check the code and try again.");
-    return;
-  }
-  if (snap.val().ended) {
-    alert("That session has already ended.");
-    return;
-  }
-
-  isHost   = false;
-  hasVoted = false;
-  currentSession = code;
-  enterSession(code);
-}
-
-function enterSession(code) {
-  document.getElementById("vote-lobby").classList.add("hidden");
-  document.getElementById("vote-session").classList.remove("hidden");
-  document.getElementById("room-code-label").textContent = code;
-
-  if (isHost) {
-    document.getElementById("end-session-btn").classList.remove("hidden");
-  }
-
-  if (unsubscribe) unsubscribe();
-  unsubscribe = onValue(ref(db, `sessions/${code}`), snap => {
+function initVoteTab() {
+  if (unsubscribe) return;
+  unsubscribe = onValue(SESSION_REF, snap => {
     const data = snap.val();
-    if (!data) return;
-    if (data.ended) {
+    if (!data) {
+      hasVoted      = false;
+      lastSessionTs = null;
+      showVotePanel("vote-lobby");
+    } else if (data.ended) {
       showFinalResults(data.options, data.votes);
     } else {
-      renderVoteList(data.options, data.votes);
+      // New session started — reset vote
+      if (data.createdAt !== lastSessionTs) {
+        hasVoted      = false;
+        lastSessionTs = data.createdAt;
+      }
+      showVoteSession(data.options, data.votes);
     }
   });
 }
 
+async function createSession() {
+  if (filteredItems.length === 0) {
+    alert("No options match your current filters — adjust filters first.");
+    return;
+  }
+  const options = filteredItems.map(i => ({
+    name:     i["Name of Place"],
+    location: i.Location || "",
+    price:    i.Pricing  || "",
+    remarks:  i.Remarks  || ""
+  }));
+  const votes = {};
+  options.forEach(o => { votes[toKey(o.name)] = 0; });
+  await set(SESSION_REF, { options, votes, ended: false, createdAt: Date.now() });
+  // onValue fires automatically — no need to call showVoteSession manually
+}
+
+async function endSession() {
+  await set(ref(db, "sessions/current/ended"), true);
+}
+
+async function resetSession() {
+  await set(SESSION_REF, null);
+  // onValue fires → shows lobby automatically
+}
+
 // ── Vote mode — rendering ────────────────────────────────────────────────────
-function renderVoteList(options, votes) {
+function showVoteSession(options, votes) {
+  showVotePanel("vote-session");
   const list = document.getElementById("vote-list");
   list.innerHTML = "";
-
   options.forEach(item => {
     const count = votes[toKey(item.name)] ?? 0;
     const div   = document.createElement("div");
@@ -307,31 +285,21 @@ function renderVoteList(options, votes) {
 }
 
 async function castVote(name) {
-  if (hasVoted || !currentSession) return;
+  if (hasVoted) return;
   hasVoted = true;
-  await runTransaction(ref(db, `sessions/${currentSession}/votes/${toKey(name)}`),
+  await runTransaction(ref(db, `sessions/current/votes/${toKey(name)}`),
     cur => (cur || 0) + 1
   );
 }
 
-async function endSession() {
-  if (!isHost || !currentSession) return;
-  await set(ref(db, `sessions/${currentSession}/ended`), true);
-}
-
 function showFinalResults(options, votes) {
-  document.getElementById("vote-list").classList.add("hidden");
-  document.getElementById("end-session-btn").classList.add("hidden");
-  document.getElementById("vote-results").classList.remove("hidden");
-
+  showVotePanel("vote-results");
   const sorted = options
     .map(item => ({ ...item, count: votes[toKey(item.name)] ?? 0 }))
     .sort((a, b) => b.count - a.count);
-
-  const max = sorted[0]?.count || 1;
+  const max  = sorted[0]?.count || 1;
   const list = document.getElementById("results-list");
   list.innerHTML = "";
-
   sorted.forEach((item, i) => {
     const row = document.createElement("div");
     row.className = `result-row${i === 0 ? " winner" : ""}`;
@@ -345,26 +313,6 @@ function showFinalResults(options, votes) {
   });
 }
 
-// ── Copy shareable link ───────────────────────────────────────────────────────
-function copyLink() {
-  if (!currentSession) return;
-  const url = `${location.origin}${location.pathname}?room=${currentSession}`;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById("copy-link-btn");
-    btn.textContent = "✅ Copied!";
-    setTimeout(() => { btn.textContent = "📋 Copy link"; }, 2500);
-  });
-}
-
-// ── Auto-join from ?room=CODE in URL ─────────────────────────────────────────
-function checkURLRoom() {
-  const room = new URLSearchParams(location.search).get("room");
-  if (!room) return;
-  document.querySelector("[data-tab='vote']").click();
-  document.getElementById("join-code-input").value = room;
-  joinSession();
-}
-
 // ── Event listeners ───────────────────────────────────────────────────────────
 document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => {
@@ -372,6 +320,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
+    if (tab.dataset.tab === "vote") initVoteTab();
   });
 });
 
@@ -380,12 +329,8 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 document.getElementById("spin-btn").addEventListener("click", spin);
 document.getElementById("create-session-btn").addEventListener("click", createSession);
-document.getElementById("join-session-btn").addEventListener("click", joinSession);
 document.getElementById("end-session-btn").addEventListener("click", endSession);
-document.getElementById("copy-link-btn").addEventListener("click", copyLink);
-document.getElementById("join-code-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") joinSession();
-});
+document.getElementById("reset-session-btn").addEventListener("click", resetSession);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadSheet().then(checkURLRoom);
+loadSheet();

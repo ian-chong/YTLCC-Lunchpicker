@@ -41,7 +41,11 @@ function parseCSVLine(line) {
 }
 
 function parseCSV(text) {
-  const [headerLine, ...rows] = text.trim().split("\n");
+  const lines = text.trim().split("\n");
+  // Row 1 is a title ("What's For Lunch?"); row 2 is the real header
+  const headerLine = lines.find(l => l.includes("Name of Place"));
+  const headerIndex = lines.indexOf(headerLine);
+  const rows = lines.slice(headerIndex + 1);
   const headers = parseCSVLine(headerLine);
   return rows
     .map(row => {

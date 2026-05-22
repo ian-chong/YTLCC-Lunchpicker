@@ -160,9 +160,9 @@ function showResult(item) {
   document.getElementById("result-name").textContent     = item["Name of Place"];
   document.getElementById("result-location").textContent = item.Location ? `📍 ${item.Location}` : "";
   const p = item.Pricing.toUpperCase();
-  const priceLabel = p.includes("BAF") ? "BAF ≤RM10"
-                   : p.includes("PKB") ? "PKB RM15+"
-                   : p.includes("BT")  ? "BT RM11–15"
+  const priceLabel = p.includes("BAF") ? "Broke AF (≤RM10)"
+                   : p.includes("PKB") ? "Pocket Kena Bomb (RM15+)"
+                   : p.includes("BT")  ? "Boleh Tahan (RM11–15)"
                    : "";
   document.getElementById("result-price").textContent   = priceLabel;
   document.getElementById("result-remarks").textContent = item.Remarks || "";

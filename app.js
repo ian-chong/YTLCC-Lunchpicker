@@ -90,7 +90,7 @@ async function loadSheet() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     allItems = parseCSV(text);
-    populateLocationFilter();
+    populateAreaFilter();
     applyFilters();
     document.getElementById("loading-overlay").classList.add("hidden");
   } catch (err) {
@@ -104,20 +104,20 @@ async function loadSheet() {
   }
 }
 
-function populateLocationFilter() {
-  const sel = document.getElementById("filter-location");
-  const locs = [...new Set(allItems.map(i => i.Location).filter(Boolean))].sort();
-  locs.forEach(loc => {
+function populateAreaFilter() {
+  const sel = document.getElementById("filter-area");
+  const areas = [...new Set(allItems.map(i => i.Location).filter(Boolean))].sort();
+  areas.forEach(area => {
     const opt = document.createElement("option");
-    opt.value = loc;
-    opt.textContent = loc;
+    opt.value = area;
+    opt.textContent = area;
     sel.appendChild(opt);
   });
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 function applyFilters() {
-  const location  = document.getElementById("filter-location").value;
+  const area      = document.getElementById("filter-area").value;
   const wantHalal = document.getElementById("filter-halal").checked;
   const wantNH    = document.getElementById("filter-nonhalal").checked;
   const wantBAF   = document.getElementById("filter-baf").checked;
@@ -125,8 +125,8 @@ function applyFilters() {
   const wantPKB   = document.getElementById("filter-pkb").checked;
 
   filteredItems = allItems.filter(item => {
-    // Location
-    if (location && item.Location !== location) return false;
+    // Area
+    if (area && item.Location !== area) return false;
 
     // Diet
     const isHalal = item.Halal.trim() !== "";
@@ -375,7 +375,8 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 
-["filter-location", "filter-halal", "filter-nonhalal", "filter-baf", "filter-bt", "filter-pkb"]
+["filter-area", "filter-halal", "filter-nonhalal", "filter-baf", "filter-bt", "filter-pkb"]
+
   .forEach(id => document.getElementById(id).addEventListener("change", applyFilters));
 
 document.getElementById("spin-btn").addEventListener("click", spin);

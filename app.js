@@ -28,33 +28,54 @@ let hasVoted       = false;
 let unsubscribe    = null;   // Firebase onValue unsubscriber
 
 // ── CSV helpers ───────────────────────────────────────────────────────────────
-function parseCSVLine(line) {
-  const cols = [];
-  let cur = "", inQ = false;
-  for (const ch of line) {
-    if (ch === '"')      { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { cols.push(cur); cur = ""; }
-    else                 { cur += ch; }
+
+// Parses full CSV text into rows of cells, correctly handling quoted multi-line fields
+function parseCSVToRows(text) {
+  const rows = [];
+  let row = [], cur = "", inQ = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"' && text[i + 1] === '"') { cur += '"'; i++; } // escaped quote
+      else if (ch === '"')                   { inQ = false; }
+      else                                   { cur += ch; }        // newlines inside quotes are kept
+    } else {
+      if      (ch === '"')  { inQ = true; }
+      else if (ch === ',')  { row.push(cur.trim()); cur = ""; }
+      else if (ch === '\r') { /* skip */ }
+      else if (ch === '\n') { row.push(cur.trim()); rows.push(row); row = []; cur = ""; }
+      else                  { cur += ch; }
+    }
   }
-  cols.push(cur);
-  return cols.map(c => c.trim().replace(/^"|"$/g, ""));
+  if (cur !== "" || row.length > 0) { row.push(cur.trim()); rows.push(row); }
+  return rows;
 }
 
 function parseCSV(text) {
-  const lines = text.trim().split("\n");
-  // Row 1 is a title ("What's For Lunch?"); row 2 is the real header
-  const headerLine = lines.find(l => l.includes("Name of Place"));
-  const headerIndex = lines.indexOf(headerLine);
-  const rows = lines.slice(headerIndex + 1);
-  const headers = parseCSVLine(headerLine);
-  return rows
-    .map(row => {
-      const cols = parseCSVLine(row);
+  const rows = parseCSVToRows(text);
+
+  // Find the real header row (skip the title row)
+  const headerIndex = rows.findIndex(row => row.includes("Name of Place"));
+  if (headerIndex === -1) return [];
+
+  const headers = rows[headerIndex];
+  const items = rows.slice(headerIndex + 1)
+    .map(cols => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
       return obj;
     })
     .filter(item => item["Name of Place"]);
+
+  // Location is only written once per group in the sheet — forward-fill it
+  let lastLocation = "";
+  items.forEach(item => {
+    if (item.Location) { lastLocation = item.Location; }
+    else               { item.Location = lastLocation; }
+  });
+
+  return items;
 }
 
 // Firebase keys cannot contain . # $ [ ] /

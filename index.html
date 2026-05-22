@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lunchpicker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <h1>🍱 Lunchpicker</h1>
+      <p class="subtitle">What's for lunch today?</p>
+    </header>
+
+    <!-- Mode Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="random">🎲 Random</button>
+      <button class="tab" data-tab="vote">🗳️ Vote</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-group">
+        <label class="filter-label">📍 Location</label>
+        <select id="filter-location">
+          <option value="">All Locations</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">🥘 Diet</label>
+        <div class="checkboxes">
+          <label><input type="checkbox" id="filter-halal" checked> Halal</label>
+          <label><input type="checkbox" id="filter-nonhalal" checked> Non-Halal</label>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">💰 Price</label>
+        <div class="checkboxes">
+          <label><input type="checkbox" id="filter-baf" checked> BAF (≤RM10)</label>
+          <label><input type="checkbox" id="filter-bt" checked> BT (RM11–15)</label>
+          <label><input type="checkbox" id="filter-pkb" checked> PKB (RM15+)</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Random Mode -->
+    <div id="tab-random" class="tab-content active">
+      <p class="count-label" id="random-count">Loading...</p>
+      <div class="spin-area">
+        <div class="result-card" id="result-card">
+          <span id="result-name">Press spin!</span>
+          <span id="result-location"></span>
+          <span id="result-price"></span>
+          <span id="result-remarks"></span>
+        </div>
+      </div>
+      <button class="btn-primary" id="spin-btn">🎲 Spin!</button>
+    </div>
+
+    <!-- Vote Mode -->
+    <div id="tab-vote" class="tab-content">
+
+      <!-- Lobby (pre-session) -->
+      <div id="vote-lobby">
+        <p class="vote-hint">Filters above apply when creating a session.</p>
+        <button class="btn-primary" id="create-session-btn">🆕 Create Session</button>
+        <div class="divider">or join an existing one</div>
+        <div class="join-row">
+          <input type="text" id="join-code-input" placeholder="ROOM CODE" maxlength="6" autocomplete="off" spellcheck="false">
+          <button class="btn-secondary" id="join-session-btn">Join</button>
+        </div>
+      </div>
+
+      <!-- Active session -->
+      <div id="vote-session" class="hidden">
+        <div class="session-bar">
+          <div class="room-code-display">
+            Room: <strong id="room-code-label"></strong>
+            <button class="btn-copy" id="copy-link-btn">📋 Copy link</button>
+          </div>
+          <button class="btn-danger hidden" id="end-session-btn">🏁 End &amp; reveal</button>
+        </div>
+
+        <div id="vote-list"></div>
+
+        <div id="vote-results" class="hidden">
+          <h3 class="results-title">🏆 Results</h3>
+          <div id="results-list"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- .app -->
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading lunch options…</p>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
